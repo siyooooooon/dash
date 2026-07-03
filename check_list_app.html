@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Check list - 나의 하루 계획표</title>
+    <!-- Tailwind CSS 사용 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 구글 폰트 적용 (귀여운 모나카/나눔스퀘어 스타일 느낌을 주는 눈누 폰트 또는 기본 고딕) -->
+    <link href="https://fonts.googleapis.com/css2?family=Gamja+Flower&family=Nanum+Pen+Script&family=Noto+Sans+KR:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: #f3f4f6;
+        }
+        .fancy-font {
+            font-family: 'Gamja Flower', cursive;
+        }
+        /* 귀여운 그림자 효과 */
+        .app-shadow {
+            box-shadow: 0 10px 25px -5px rgba(167, 139, 250, 0.3), 0 8px 10px -6px rgba(167, 139, 250, 0.3);
+        }
+        /* 미니 달력 스프링 디테일 효과 */
+        .calendar-spring {
+            background: linear-gradient(to bottom, #d1d5db 50%, #9ca3af 50%);
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-tr from-indigo-100 via-purple-50 to-pink-100 min-h-screen flex items-center justify-center p-4">
+
+    <!-- 앱 메인 컨테이너 -->
+    <div class="w-full max-w-md bg-white rounded-3xl p-6 app-shadow border-4 border-purple-200 relative overflow-hidden min-h-[580px]">
+        
+        <!-- 로딩 오버레이 (클라우드 데이터 불러올 때 표시) -->
+        <div id="loadingOverlay" class="absolute inset-0 bg-white/95 flex flex-col items-center justify-center z-50 rounded-3xl transition-opacity duration-300">
+            <div class="animate-spin rounded-full h-12 w-12 border-4 border-purple-500 border-t-transparent"></div>
+            <p class="text-sm font-bold text-purple-600 mt-4 fancy-font">오늘의 계획을 불러오고 있어요... 📝</p>
+        </div>
+
+        <!-- 상단 귀여운 장식 요소 (다이어리 스프링 느낌) -->
+        <div class="absolute top-0 left-0 right-0 flex justify-around px-8 -mt-2">
+            <div class="w-4 h-6 bg-purple-300 rounded-full border-2 border-white"></div>
+            <div class="w-4 h-6 bg-purple-300 rounded-full border-2 border-white"></div>
+            <div class="w-4 h-6 bg-purple-300 rounded-full border-2 border-white"></div>
+            <div class="w-4 h-6 bg-purple-300 rounded-full border-2 border-white"></div>
+            <div class="w-4 h-6 bg-purple-300 rounded-full border-2 border-white"></div>
+        </div>
+
+        <!-- 앱 헤더 영역 (오늘 날짜 미니 달력 배지) -->
+        <div class="flex items-center justify-between mt-5 mb-5 bg-purple-50/70 p-4 rounded-2xl border border-purple-100">
+            <div class="text-left">
+                <span class="text-[11px] bg-purple-200 text-purple-700 px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider">My Daily Planner</span>
+                <h1 class="text-3xl font-extrabold text-purple-600 fancy-font mt-1 flex items-center gap-1">
+                    📝 Check list
+                </h1>
+                <p class="text-xs text-purple-400 mt-0.5">오늘도 신나게 계획을 이뤄봐요!</p>
+            </div>
+            
+            <!-- 입체 미니 달력 배지 -->
+            <div class="flex flex-col items-center bg-white rounded-2xl shadow-md border-2 border-purple-200 overflow-hidden w-16 h-20 transform rotate-3 hover:rotate-0 transition-transform duration-300 cursor-pointer">
+                <!-- 빨간 달력 상단 띠 -->
+                <div class="bg-pink-500 w-full text-[10px] text-white font-bold text-center py-0.5" id="calMonth">7월</div>
+                <!-- 날짜 숫자 -->
+                <div class="text-2xl font-black text-gray-800 leading-tight pt-1.5" id="calDate">02</div>
+                <!-- 요일 텍스트 -->
+                <div class="text-[9px] text-gray-500 font-bold pb-1" id="calDay">목요일</div>
+            </div>
+        </div>
+
+        <!-- 할 일 입력 영역 -->
+        <div class="mb-5">
+            <form id="todoForm" class="flex gap-2">
+                <input 
+                    type="text" 
+                    id="todoInput" 
+                    placeholder="예) 수학 숙제하기, 영단어 외우기..." 
+                    maxlength="30"
+                    class="flex-1 px-4 py-3 border-2 border-purple-200 rounded-2xl focus:outline-none focus:border-purple-400 text-sm transition-all duration-300 placeholder-gray-400 shadow-inner"
+                    required
+                >
+                <button 
+                    type="submit" 
+                    class="bg-purple-500 hover:bg-purple-600 text-white font-bold px-5 py-3 rounded-2xl transition-all duration-300 transform hover:scale-105 active:scale-95 flex items-center justify-center shadow-md"
+                >
+                    <!-- 플러스 아이콘 -->
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M12 4v16m8-8H4" />
+                    </svg>
+                </button>
+            </form>
+            <p id="alertMessage" class="text-xs text-red-500 mt-2 hidden">⚠️ 내용을 입력해주세요!</p>
+        </div>
+
+        <!-- 진행률 프로그레스 바 영역 -->
+        <div id="progressContainer" class="mb-5 bg-purple-50 p-3 rounded-2xl border border-purple-100 hidden">
+            <div class="flex justify-between items-center mb-1.5">
+                <span class="text-xs font-bold text-purple-600" id="progressText">오늘의 달성도: 0%</span>
+                <span class="text-xs font-bold text-pink-500" id="progressStatus">시작이 반이에요! 🚀</span>
+            </div>
+            <div class="w-full bg-gray-200 h-2.5 rounded-full overflow-hidden">
+                <div id="progressBar" class="bg-gradient-to-r from-purple-400 to-pink-400 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+            </div>
+        </div>
+
+        <!-- 전체 날짜 텍스트 및 요약 표시 -->
+        <div class="flex justify-between items-center mb-4 px-1">
+            <div class="text-xs font-bold text-gray-500 flex items-center gap-1" id="currentDate">
+                📅 2026년 07월 02일 목요일
+            </div>
+            <div class="text-xs text-purple-500 font-bold bg-purple-50 px-2 py-1 rounded-lg">
+                완료: <span id="doneCount">0</span> / <span id="totalCount">0</span>
+            </div>
+        </div>
+
+        <!-- 할 일 목록 영역 -->
+        <div class="bg-purple-50/50 rounded-2xl p-4 min-h-[220px] max-h-[320px] overflow-y-auto border border-purple-100">
+            <!-- 할 일이 없을 때 보여주는 기본 가이드 메세지 -->
+            <div id="emptyState" class="flex flex-col items-center justify-center h-44 text-gray-400 transition-all">
+                <div class="text-4xl mb-2">⭐</div>
+                <p class="text-sm font-medium">아직 등록된 할 일이 없어요!</p>
+                <p class="text-xs text-gray-400 mt-1">위의 입력창에 오늘 할 일을 적어보세요.</p>
+            </div>
+
+            <!-- 실제 등록되는 할 일 리스트 -->
+            <ul id="todoList" class="space-y-3 hidden">
+                <!-- 자바스크립트로 할 일이 여기에 추가됩니다. -->
+            </ul>
+        </div>
+
+        <!-- 하단 응원 문구 -->
+        <div class="mt-6 text-center text-xs text-purple-400 font-medium" id="encouragementText">
+            "작은 계획이 큰 꿈을 이뤄요! 화이팅! ✨"
+        </div>
+
+    </div>
+
+    <!-- Firebase 모듈 및 앱 로직 작성 -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // DOM 요소 가져오기
+        const todoForm = document.getElementById('todoForm');
+        const todoInput = document.getElementById('todoInput');
+        const todoList = document.getElementById('todoList');
+        const emptyState = document.getElementById('emptyState');
+        const totalCountElement = document.getElementById('totalCount');
+        const doneCountElement = document.getElementById('doneCount');
+        const alertMessage = document.getElementById('alertMessage');
+        const currentDateElement = document.getElementById('currentDate');
+        
+        // 미니 달력 배지 요소
+        const calMonth = document.getElementById('calMonth');
+        const calDate = document.getElementById('calDate');
+        const calDay = document.getElementById('calDay');
+        
+        // 프로그레스 바 요소
+        const progressContainer = document.getElementById('progressContainer');
+        const progressBar = document.getElementById('progressBar');
+        const progressText = document.getElementById('progressText');
+        const progressStatus = document.getElementById('progressStatus');
+        const encouragementText = document.getElementById('encouragementText');
+        const loadingOverlay = document.getElementById('loadingOverlay');
+
+        // 전역 상태 변수
+        let db, auth, appId, currentUser = null;
+        let todos = [];
+        let currentLoadedDate = ""; // 데이터베이스에 기록된 마지막 저장 날짜
+
+        // 날짜 데이터 가져오기 함수 (실시간 동기화용)
+        function getTodayInfo() {
+            const days = ['일요일', '월요일', '화요일', '수요일', '목요일', '금요일', '토요일'];
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = today.getMonth() + 1;
+            const date = today.getDate();
+            const dayName = days[today.getDay()];
+            
+            return {
+                year,
+                month,
+                date: String(date).padStart(2, '0'),
+                dayName,
+                // 날짜 비교를 위한 YYYY-MM-DD 문자열 생성
+                dateKey: `${year}-${String(month).padStart(2, '0')}-${String(date).padStart(2, '0')}`
+            };
+        }
+
+        // 오늘 날짜 UI 표시 업데이트
+        function updateDateUI() {
+            const today = getTodayInfo();
+            currentDateElement.textContent = `📅 ${today.year}년 ${String(today.month).padStart(2, '0')}월 ${today.date}일 ${today.dayName}`;
+            calMonth.textContent = `${today.month}월`;
+            calDate.textContent = today.date;
+            calDay.textContent = today.dayName;
+        }
+
+        // Firebase 및 사용자 인증 초기화 (환경 변수 반영)
+        async function initApp() {
+            showLoading();
+            updateDateUI();
+
+            try {
+                // 환경 설정 가져오기
+                const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+                appId = typeof __app_id !== 'undefined' ? __app_id : 'default-checklist-app';
+
+                if (!firebaseConfig) {
+                    // Firebase 설정이 없는 로컬 가상 환경 대응
+                    console.warn("Firebase config not available. Running in memory mode.");
+                    hideLoading();
+                    updateUI();
+                    startLocalTimer(); // 브라우저가 계속 켜져있을 때 실시간 날짜 확인용 타이머 시작
+                    return;
+                }
+
+                const app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+
+                // 익명 또는 커스텀 로그인 처리
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+
+                onAuthStateChanged(auth, async (user) => {
+                    currentUser = user;
+                    if (user) {
+                        await syncWithDatabase();
+                        startLocalTimer(); // 데이터 불러온 후 타이머 시작
+                    } else {
+                        hideLoading();
+                    }
+                });
+
+            } catch (error) {
+                console.error("Firebase 초기화 중 에러 발생:", error);
+                hideLoading();
+                updateUI();
+            }
+        }
+
+        // 데이터베이스와 할 일 목록 동기화 및 "새로운 하루" 체크
+        async function syncWithDatabase() {
+            if (!currentUser) return;
+            showLoading();
+
+            try {
+                const today = getTodayInfo();
+                // 1. Strict Path 규칙 적용: artifacts/{appId}/users/{userId}/todoData/current
+                const docRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'todoData', 'current');
+                const docSnap = await getDoc(docRef);
+
+                if (docSnap.exists()) {
+                    const savedData = docSnap.data();
+                    currentLoadedDate = savedData.date;
+
+                    // 핵심 기능: 만약 마지막으로 저장한 날짜가 '오늘'이 아니라면 (날짜가 지났다면)
+                    if (currentLoadedDate !== today.dateKey) {
+                        console.log("새로운 하루가 감지되었습니다! 어제 계획을 초기화합니다.");
+                        todos = []; // 할 일 싹 비우기
+                        currentLoadedDate = today.dateKey;
+                        await saveToDatabase(); // 비워진 상태를 새 날짜로 데이터베이스에 저장
+                    } else {
+                        // 같은 날인 경우 기존에 적어둔 데이터 가져오기
+                        todos = savedData.list || [];
+                    }
+                } else {
+                    // 처음 방문한 유저의 경우 기본 구조 세팅
+                    todos = [];
+                    currentLoadedDate = today.dateKey;
+                    await saveToDatabase();
+                }
+            } catch (e) {
+                console.error("데이터 로드 중 에러가 발생했습니다:", e);
+            } finally {
+                hideLoading();
+                updateUI();
+            }
+        }
+
+        // 데이터베이스에 할 일 상태 저장
+        async function saveToDatabase() {
+            if (!currentUser) return;
+            try {
+                const today = getTodayInfo();
+                const docRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'todoData', 'current');
+                await setDoc(docRef, {
+                    date: today.dateKey,
+                    list: todos
+                });
+            } catch (e) {
+                console.error("데이터 저장 실패:", e);
+            }
+        }
+
+        // 실시간 날짜 바뀜 체크 타이머 (켜둔 상태로 밤 12시가 넘었을 때 대비)
+        function startLocalTimer() {
+            setInterval(async () => {
+                const today = getTodayInfo();
+                
+                // 표시되고 있는 날짜 정보와 실제 기기의 오늘 날짜가 달라진 경우
+                if (currentLoadedDate !== "" && currentLoadedDate !== today.dateKey) {
+                    console.log("사용 중 자정이 넘어 날짜 변경이 감지되었습니다.");
+                    updateDateUI();
+                    await syncWithDatabase();
+                }
+            }, 30000); // 30초마다 한 번씩 똑똑하게 날짜 확인
+        }
+
+        // 화면 UI 그리기 및 렌더링
+        function updateUI() {
+            const total = todos.length;
+            const completed = todos.filter(t => t.completed).length;
+
+            totalCountElement.textContent = total;
+            doneCountElement.textContent = completed;
+
+            if (total === 0) {
+                progressContainer.classList.add('hidden');
+                emptyState.classList.remove('hidden');
+                todoList.classList.add('hidden');
+            } else {
+                progressContainer.classList.remove('hidden');
+                emptyState.classList.add('hidden');
+                todoList.classList.remove('hidden');
+
+                const percent = Math.round((completed / total) * 100);
+                progressBar.style.width = `${percent}%`;
+                progressText.textContent = `오늘의 달성도: ${percent}%`;
+
+                if (percent === 0) {
+                    progressStatus.textContent = "시작이 반이에요! 🚀";
+                    encouragementText.textContent = "하나씩 천천히 시작해봐요! 😊";
+                } else if (percent < 50) {
+                    progressStatus.textContent = "좋은 출발이에요! 👍";
+                    encouragementText.textContent = "오! 집중해서 잘하고 있어요! ✨";
+                } else if (percent < 100) {
+                    progressStatus.textContent = "거의 다 왔어요! 힘내요! 🔥";
+                    encouragementText.textContent = "조금만 더 힘내면 오늘 계획 완료! 💪";
+                } else {
+                    progressStatus.textContent = "모두 완료! 대단해요! 🎉";
+                    encouragementText.textContent = "와! 오늘 계획을 전부 성공했어요! 최고! 🥳👏";
+                }
+                
+                todoList.innerHTML = '';
+                todos.forEach((todo, index) => {
+                    const li = document.createElement('li');
+                    
+                    const liClass = todo.completed 
+                        ? "flex items-center justify-between bg-purple-50/50 p-3.5 rounded-xl border border-purple-100 shadow-sm transition-all duration-300 opacity-75"
+                        : "flex items-center justify-between bg-white p-3.5 rounded-xl border border-purple-100 shadow-sm transition-all duration-300 hover:shadow-md transform hover:-translate-y-0.5";
+                    
+                    li.className = liClass;
+                    
+                    const checkIcon = todo.completed
+                        ? `<div class="w-5 h-5 rounded-full bg-purple-500 border-2 border-purple-500 flex items-center justify-center flex-shrink-0 transition-all duration-300">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-white" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                                </svg>
+                           </div>`
+                        : `<div class="w-5 h-5 rounded-full border-2 border-purple-300 flex-shrink-0 transition-all duration-300 group-hover:border-purple-400"></div>`;
+
+                    const textClass = todo.completed
+                        ? "text-sm font-normal text-gray-400 line-through select-none"
+                        : "text-sm font-medium text-gray-700 select-none";
+
+                    li.innerHTML = `
+                        <div onclick="toggleTodo(${index})" class="flex items-center gap-3 cursor-pointer flex-1 group">
+                            ${checkIcon}
+                            <span class="${textClass}">${todo.text}</span>
+                        </div>
+                        <button onclick="deleteTodo(${index})" class="text-gray-300 hover:text-red-400 transition-colors p-1 ml-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                        </button>
+                    `;
+                    todoList.appendChild(li);
+                });
+            }
+        }
+
+        // 할 일 추가
+        async function addTodo(text) {
+            const newTodo = {
+                id: Date.now(),
+                text: text,
+                completed: false
+            };
+            todos.push(newTodo);
+            updateUI();
+            await saveToDatabase();
+        }
+
+        // 체크 상태 토글 (완료/미완료)
+        async function toggleTodo(index) {
+            todos[index].completed = !todos[index].completed;
+            updateUI();
+            await saveToDatabase();
+        }
+
+        // 할 일 삭제
+        async function deleteTodo(index) {
+            todos.splice(index, 1);
+            updateUI();
+            await saveToDatabase();
+        }
+
+        // 모듈 범위 내의 함수들을 전역 window 객체에 수동 등록 (HTML 인라인 핸들러 바인딩)
+        window.toggleTodo = toggleTodo;
+        window.deleteTodo = deleteTodo;
+
+        // 폼 제출 이벤트 리스너
+        todoForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const text = todoInput.value.trim();
+            if (text === '') {
+                alertMessage.classList.remove('hidden');
+                return;
+            }
+            
+            alertMessage.classList.add('hidden');
+            await addTodo(text);
+            
+            todoInput.value = '';
+            todoInput.focus();
+        });
+
+        // 로딩 화면 도우미 함수들
+        function showLoading() {
+            loadingOverlay.style.opacity = '1';
+            loadingOverlay.classList.remove('hidden');
+        }
+
+        function hideLoading() {
+            loadingOverlay.style.opacity = '0';
+            setTimeout(() => {
+                loadingOverlay.classList.add('hidden');
+            }, 300);
+        }
+
+        // 앱 구동 시작
+        window.onload = function() {
+            initApp();
+        }
+    </script>
+</body>
+</html>
